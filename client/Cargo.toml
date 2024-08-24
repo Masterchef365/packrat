@@ -1,8 +1,23 @@
 [package]
 name = "client"
 version = "0.1.0"
+authors = ["Duncan Freeman <duncan.freeman1@gmail.com>"]
 edition = "2021"
 
 [dependencies]
-ewebsock = "0.6.0"
-common = { path = "../common/" }
+egui = "0.28"
+eframe = { version = "0.28", default-features = false, features = [
+    "accesskit",
+    "default_fonts",
+    "glow",
+    "persistence",
+] }
+log = "0.4"
+serde = { version = "1", features = ["derive"] }
+getrandom = { version = "0.2", features = ["js"] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+env_logger = "0.10"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen-futures = "0.4"
