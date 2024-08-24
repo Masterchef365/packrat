@@ -23,7 +23,7 @@ async fn server_loop(addr: String) {
 }
 
 async fn accept_connection(stream: TcpStream) {
-    let mut ws_stream = match tokio_tungstenite::accept_async(stream).await {
+    let ws_stream = match tokio_tungstenite::accept_async(stream).await {
         Ok(stream) => stream,
         Err(e) => {
             warn!("Error during the websocket handshake occurred; {e}");
