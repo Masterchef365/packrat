@@ -1,6 +1,7 @@
-use common::PackRat;
+use common::{PackRat, PackRatRequest, PackRatResponse};
 use log::{error, info, warn};
 use tarpc::server::Channel;
+use tarpc::ClientMessage;
 use tarpc::{server::BaseChannel, transport};
 use tokio::net::{TcpListener, TcpStream};
 use tokio_tungstenite::tungstenite::Message;
@@ -40,9 +41,12 @@ async fn accept_connection(stream: TcpStream) {
                 _ => None,
             }
         })
-        .map(|binary| common::decode(&binary).map_err(|_| IdkHowElseToFixThis::AttackAttempt))
+        .map(|binary| {
+            common::decode::<tarpc::ClientMessage<PackRatRequest>>(&binary)
+                .map_err(|_| IdkHowElseToFixThis::AttackAttempt)
+        })
         .with(|resp| async move {
-            common::encode(resp)
+            common::encode::<tarpc::Response<PackRatResponse>>(&resp)
                 .map(Message::Binary)
                 .map_err(|_| IdkHowElseToFixThis::AttackAttempt)
         });

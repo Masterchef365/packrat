@@ -10,12 +10,12 @@ use ewebsock_tarpc::{
     ewebsock::{WsReceiver, WsSender},
     WebSocketPoller,
 };
+use futures::sink::SinkExt;
 use futures::task::noop_waker_ref;
 use futures::{StreamExt, TryStreamExt};
 use poll_promise::Promise;
 use tarpc::Request;
 use tarpc::{client::NewClient, transport::channel::UnboundedChannel, ClientMessage, Response};
-use futures::sink::SinkExt;
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 pub struct App {
@@ -47,10 +47,8 @@ impl App {
 
         let ctx = cc.egui_ctx.clone();
         let (ws_tx, ws_rx) =
-            ewebsock::connect_with_wakeup(addr, Default::default(), move || {
-                ctx.request_repaint()
-            })
-            .unwrap();
+            ewebsock::connect_with_wakeup(addr, Default::default(), move || ctx.request_repaint())
+                .unwrap();
 
         Self {
             ws_tx,
@@ -111,7 +109,8 @@ impl eframe::App for App {
         let waker = noop_waker_ref();
         let mut cx = std::task::Context::from_waker(&waker);
         while let Poll::Ready(Some(Ok(value))) = self.server_transport.poll_next_unpin(&mut cx) {
-            self.ws_tx.send(ewebsock::WsMessage::Binary(common::encode(&value).unwrap()));
+            self.ws_tx
+                .send(ewebsock::WsMessage::Binary(common::encode(&value).unwrap()));
         }
 
         poll_promise::tick();
