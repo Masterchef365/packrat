@@ -1,17 +1,27 @@
 #![warn(clippy::all, rust_2018_idioms)]
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
-use common::PackRatClient;
+use common::{PackRatClient, PackRatRequest, PackRatResponse};
 use egui::Ui;
-use ewebsock_tarpc::WebSocketPoller;
+use ewebsock_tarpc::ewebsock;
+use ewebsock_tarpc::{
+    ewebsock::{WsReceiver, WsSender},
+    WebSocketPoller,
+};
+use futures::StreamExt;
 use poll_promise::Promise;
-use tarpc::client::NewClient;
+use tarpc::Request;
+use tarpc::{client::NewClient, transport::channel::UnboundedChannel, ClientMessage, Response};
+use futures::sink::SinkExt;
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 pub struct App {
     rx_text: Option<Promise<String>>,
     client: PackRatClient,
     data: AppData,
+    server_transport: UnboundedChannel<ClientMessage<PackRatRequest>, Response<PackRatResponse>>,
+    ws_tx: WsSender,
+    ws_rx: WsReceiver,
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Default)]
@@ -27,9 +37,22 @@ impl App {
             .and_then(|storage| eframe::get_value(storage, eframe::APP_KEY))
             .unwrap_or_default();
 
+        let (client_transport, server_transport) = tarpc::transport::channel::unbounded();
         let client = PackRatClient::new(Default::default(), client_transport);
 
+        let addr = "127.0.0.1:9090";
+
+        let ctx = cc.egui_ctx.clone();
+        let (ws_tx, ws_rx) =
+            ewebsock::connect_with_wakeup(addr, Default::default(), move || {
+                ctx.request_repaint()
+            })
+            .unwrap();
+
         Self {
+            ws_tx,
+            ws_rx,
+            server_transport,
             client: client.client,
             rx_text: None,
             data,
@@ -45,6 +68,17 @@ impl eframe::App for App {
 
     /// Called each time the UI needs repainting, which may be many times per second.
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        while let Some(msg) = self.ws_rx.try_recv() {
+            match msg {
+                ewebsock::WsEvent::Message(ewebsock::WsMessage::Binary(binary)) => {
+                    let decoded = common::decode(&binary).unwrap();
+                    self.server_transport.start_send_unpin(decoded).unwrap();
+                }
+                _ => (),
+            }
+        }
+
+        // Do gui stuff
         egui::CentralPanel::default().show(ctx, |ui| {
             if let Some(promise) = &mut self.rx_text {
                 if let Some(value) = promise.ready() {

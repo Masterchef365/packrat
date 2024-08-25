@@ -715,6 +715,8 @@ dependencies = [
 name = "common"
 version = "0.1.0"
 dependencies = [
+ "bincode",
+ "serde",
  "tarpc",
 ]
 
@@ -1750,7 +1752,6 @@ name = "manager"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "bincode",
  "common",
  "futures-util",
  "log",
