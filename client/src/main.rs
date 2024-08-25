@@ -84,8 +84,6 @@ impl eframe::App for App {
             }
         }
 
-        poll_promise::tick();
-
         // Do gui stuff
         egui::CentralPanel::default().show(ctx, |ui| {
             if let Some(promise) = &mut self.rx_text {
@@ -107,7 +105,6 @@ impl eframe::App for App {
             }
         });
 
-        poll_promise::tick();
 
         if self.can_send {
             // Flush RPC changes to the server
@@ -119,7 +116,8 @@ impl eframe::App for App {
                 }
         }
 
-        poll_promise::tick();
+        poll_promise::tick_local();
+
     }
 }
 
