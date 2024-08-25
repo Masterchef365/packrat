@@ -25,6 +25,7 @@ pub struct App {
     server_transport: UnboundedChannel<ClientMessage<PackRatRequest>, Response<PackRatResponse>>,
     ws_tx: WsSender,
     ws_rx: WsReceiver,
+    can_send: bool,
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Default)]
@@ -43,7 +44,7 @@ impl App {
         let (client_transport, server_transport) = tarpc::transport::channel::unbounded();
         let client = PackRatClient::new(Default::default(), client_transport);
 
-        let addr = "127.0.0.1:9090";
+        let addr = "ws://127.0.0.1:9090";
 
         let ctx = cc.egui_ctx.clone();
         let (ws_tx, ws_rx) =
@@ -51,6 +52,7 @@ impl App {
                 .unwrap();
 
         Self {
+            can_send: false,
             ws_tx,
             ws_rx,
             server_transport,
@@ -76,7 +78,9 @@ impl eframe::App for App {
                     let decoded = common::decode(&binary).unwrap();
                     self.server_transport.start_send_unpin(decoded).unwrap();
                 }
-                _ => (),
+                ewebsock::WsEvent::Opened => dbg!(self.can_send = true),
+                ewebsock::WsEvent::Error(e) => panic!("{:#}", e),
+                _ => todo!(),
             }
         }
 
@@ -105,12 +109,14 @@ impl eframe::App for App {
 
         poll_promise::tick();
 
-        // Flush RPC changes to the server
-        let waker = noop_waker_ref();
-        let mut cx = std::task::Context::from_waker(&waker);
-        while let Poll::Ready(Some(Ok(value))) = self.server_transport.poll_next_unpin(&mut cx) {
-            self.ws_tx
-                .send(ewebsock::WsMessage::Binary(common::encode(&value).unwrap()));
+        if self.can_send {
+            // Flush RPC changes to the server
+            let waker = noop_waker_ref();
+            let mut cx = std::task::Context::from_waker(&waker);
+            while let Poll::Ready(Some(Ok(value))) = self.server_transport.poll_next_unpin(&mut cx) {
+                self.ws_tx
+                    .send(ewebsock::WsMessage::Binary(common::encode(&value).unwrap()));
+                }
         }
 
         poll_promise::tick();

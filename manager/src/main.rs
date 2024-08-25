@@ -18,7 +18,8 @@ async fn server_loop(addr: String) {
 
     let listener = try_socket.expect("Failed to bind");
 
-    while let Ok((stream, _addr)) = listener.accept().await {
+    while let Ok((stream, addr)) = listener.accept().await {
+        dbg!(addr);
         tokio::spawn(accept_connection(stream));
     }
 }
