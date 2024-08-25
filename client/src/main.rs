@@ -26,7 +26,6 @@ pub struct App {
     ws_tx: WsSender,
     ws_rx: WsReceiver,
     can_send: bool,
-    dispatcher: Promise<()>,
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Default)]
@@ -45,7 +44,7 @@ impl App {
         let (client_transport, server_transport) = tarpc::transport::channel::unbounded();
         let client = PackRatClient::new(Default::default(), client_transport);
 
-        let dispatcher = Promise::spawn_local(async { let _ = client.dispatch.await; });
+        tokio::task::spawn(client.dispatch);
 
         let addr = "ws://127.0.0.1:9090";
 
@@ -55,7 +54,6 @@ impl App {
                 .unwrap();
 
         Self {
-            dispatcher,
             can_send: false,
             ws_tx,
             ws_rx,
@@ -99,7 +97,7 @@ impl eframe::App for App {
             } else {
                 if ui.button("Do the thing").clicked() {
                     let client = self.client.clone();
-                    self.rx_text = Some(Promise::spawn_local(async move {
+                    self.rx_text = Some(Promise::spawn_async(async move {
                         client
                             .hello(tarpc::context::current(), "Hello from client".to_string())
                             .await
@@ -119,15 +117,13 @@ impl eframe::App for App {
                     .send(ewebsock::WsMessage::Binary(common::encode(&value).unwrap()));
                 }
         }
-
-        poll_promise::tick_local();
-
     }
 }
 
 // When compiling natively:
 #[cfg(not(target_arch = "wasm32"))]
-fn main() -> eframe::Result {
+#[tokio::main]
+async fn main() -> eframe::Result {
     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
 
     let native_options = eframe::NativeOptions {

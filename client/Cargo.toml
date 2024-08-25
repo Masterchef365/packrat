@@ -21,7 +21,9 @@ tarpc = { version = "0.34.0", features = ["serde1"] }
 futures = { version = "0.3.30", features = ["executor"] }
 
 ewebsock-tarpc = { path = "../../ewebsock-tarpc" }
-poll-promise = { version = "0.3.0", features = ["smol"] }
+poll-promise = { version = "0.3.0", features = ["tokio"] }
+
+tokio = { version = "1.32.0", features = ["rt", "time"] }
 
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
