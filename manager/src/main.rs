@@ -40,9 +40,9 @@ async fn accept_connection(stream: TcpStream) {
                 _ => None,
             }
         })
-        .map(|binary| common::encode(&binary).map_err(|_| IdkHowElseToFixThis::AttackAttempt))
+        .map(|binary| common::decode(&binary).map_err(|_| IdkHowElseToFixThis::AttackAttempt))
         .with(|resp| async move {
-            common::decode(resp)
+            common::encode(resp)
                 .map(Message::Binary)
                 .map_err(|_| IdkHowElseToFixThis::AttackAttempt)
         });
