@@ -1,6 +1,8 @@
 #![warn(clippy::all, rust_2018_idioms)]
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
+use std::task::Poll;
+
 use common::{PackRatClient, PackRatRequest, PackRatResponse};
 use egui::Ui;
 use ewebsock_tarpc::ewebsock;
@@ -8,6 +10,7 @@ use ewebsock_tarpc::{
     ewebsock::{WsReceiver, WsSender},
     WebSocketPoller,
 };
+use futures::task::noop_waker_ref;
 use futures::{StreamExt, TryStreamExt};
 use poll_promise::Promise;
 use tarpc::Request;
@@ -68,6 +71,7 @@ impl eframe::App for App {
 
     /// Called each time the UI needs repainting, which may be many times per second.
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        // Fetch frames received from the server, and send use them for RPC
         while let Some(msg) = self.ws_rx.try_recv() {
             match msg {
                 ewebsock::WsEvent::Message(ewebsock::WsMessage::Binary(binary)) => {
@@ -77,6 +81,8 @@ impl eframe::App for App {
                 _ => (),
             }
         }
+
+        poll_promise::tick();
 
         // Do gui stuff
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -101,7 +107,14 @@ impl eframe::App for App {
 
         poll_promise::tick();
 
-        //self.ws_tx.send(ewebsock::WsMessage::Binary(common::encode(&data).unwrap()));
+        // Flush RPC changes to the server
+        let waker = noop_waker_ref();
+        let mut cx = std::task::Context::from_waker(&waker);
+        while let Poll::Ready(Some(Ok(value))) = self.server_transport.poll_next_unpin(&mut cx) {
+            self.ws_tx.send(ewebsock::WsMessage::Binary(common::encode(&value).unwrap()));
+        }
+
+        poll_promise::tick();
     }
 }
 
