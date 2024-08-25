@@ -8,7 +8,7 @@ use ewebsock_tarpc::{
     ewebsock::{WsReceiver, WsSender},
     WebSocketPoller,
 };
-use futures::StreamExt;
+use futures::{StreamExt, TryStreamExt};
 use poll_promise::Promise;
 use tarpc::Request;
 use tarpc::{client::NewClient, transport::channel::UnboundedChannel, ClientMessage, Response};
@@ -98,6 +98,10 @@ impl eframe::App for App {
                 }
             }
         });
+
+        poll_promise::tick();
+
+        //self.ws_tx.send(ewebsock::WsMessage::Binary(common::encode(&data).unwrap()));
     }
 }
 
