@@ -17,7 +17,7 @@ serde = { version = "1", features = ["derive"] }
 getrandom = { version = "0.2", features = ["js"] }
 
 common = { path = "../common" }
-tarpc = "0.34.0"
+tarpc = { version = "0.34.0", features = ["serde1"] }
 futures = { version = "0.3.30", features = ["executor"] }
 
 ewebsock-tarpc = { path = "../../ewebsock-tarpc" }

@@ -26,6 +26,7 @@ pub struct App {
     ws_tx: WsSender,
     ws_rx: WsReceiver,
     can_send: bool,
+    dispatcher: Promise<()>,
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Default)]
@@ -44,6 +45,8 @@ impl App {
         let (client_transport, server_transport) = tarpc::transport::channel::unbounded();
         let client = PackRatClient::new(Default::default(), client_transport);
 
+        let dispatcher = Promise::spawn_local(async { let _ = client.dispatch.await; });
+
         let addr = "ws://127.0.0.1:9090";
 
         let ctx = cc.egui_ctx.clone();
@@ -52,6 +55,7 @@ impl App {
                 .unwrap();
 
         Self {
+            dispatcher,
             can_send: false,
             ws_tx,
             ws_rx,
