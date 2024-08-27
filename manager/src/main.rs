@@ -1,3 +1,6 @@
+use std::borrow::BorrowMut;
+use std::sync::{Arc, Mutex};
+
 use common::{PackRat, PackRatRequest, PackRatResponse};
 use log::{error, info, warn};
 use tarpc::server::Channel;
@@ -56,18 +59,22 @@ async fn accept_connection(stream: TcpStream) {
 
     tokio::spawn(
         server
-            .execute(PackRatServer.serve())
+            .execute(PackRatServer::default().serve())
             .for_each(|response| async move {
                 tokio::spawn(response);
             }),
     );
 }
 
-#[derive(Clone)]
-struct PackRatServer;
+#[derive(Clone, Default)]
+struct PackRatServer {
+    number: Arc<Mutex<u32>>,
+}
 
 impl PackRat for PackRatServer {
     async fn hello(self, _context: tarpc::context::Context, name: String) -> String {
-        name + "Said hi!"
+        let mut number = self.number.lock().unwrap();
+        *number += 1;
+        format!("Name: {name} Number: {number}")
     }
 }

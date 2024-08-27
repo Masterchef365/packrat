@@ -97,22 +97,22 @@ impl eframe::App for App {
                 } else {
                     ui.label("Waiting for a response ...");
                 }
-            } else {
-                if ui.button("Do the thing").clicked() {
-                    let client = self.client.clone();
-                    log::info!("Click");
+            } 
 
-                    self.rx_text = Some(Promise::spawn_local(async move {
-                        println!("Saying hello");
-                        match client
-                            .hello(tarpc::context::current(), "Hello from client".to_string())
-                            .await
-                        {
-                            Ok(text) => text,
-                            Err(e) => format!("{:#}", e),
-                        }
-                    }));
-                }
+            if ui.button("Do the thing").clicked() {
+                let client = self.client.clone();
+                log::info!("Click");
+
+                self.rx_text = Some(Promise::spawn_local(async move {
+                    println!("Saying hello");
+                    match client
+                        .hello(tarpc::context::current(), "Hello from client".to_string())
+                        .await
+                    {
+                        Ok(text) => text,
+                        Err(e) => format!("{:#}", e),
+                    }
+                }));
             }
         });
 
