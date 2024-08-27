@@ -10,9 +10,10 @@ use ewebsock_tarpc::{
     ewebsock::{WsReceiver, WsSender},
     WebSocketPoller,
 };
-use futures::sink::SinkExt;
-use futures::task::noop_waker_ref;
-use futures::{StreamExt, TryStreamExt};
+use futures_util::sink::SinkExt;
+use futures_util::task::noop_waker_ref;
+use futures_util::{StreamExt, TryStreamExt};
+
 use poll_promise::Promise;
 use tarpc::Request;
 use tarpc::{client::NewClient, transport::channel::UnboundedChannel, ClientMessage, Response};
