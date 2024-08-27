@@ -21,10 +21,17 @@ tarpc = { version = "0.34.0", features = ["serde1"] }
 futures = { version = "0.3.30", features = ["executor"] }
 
 ewebsock-tarpc = { path = "../../ewebsock-tarpc" }
-poll-promise = { version = "0.3.0", features = ["tokio"] }
+#poll-promise = { version = "0.3.0", features = ["tokio"] }
+poll-promise = { git = "https://github.com/Masterchef365/poll-promise.git", branch = "wasm", features = ["tokio"] }
 
-tokio = { version = "1.32.0", features = ["rt", "time"] }
 
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies.tokio]
+version = "1.32.0"
+features = ["rt", "time", "rt-multi-thread"]
+
+[target.'cfg(target_arch = "wasm32")'.dependencies.tokio]
+version = "1.32.0"
+features = ["rt", "time"]
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 env_logger = "0.10"

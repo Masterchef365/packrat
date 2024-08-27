@@ -97,11 +97,15 @@ impl eframe::App for App {
             } else {
                 if ui.button("Do the thing").clicked() {
                     let client = self.client.clone();
+                    println!("Click");
                     self.rx_text = Some(Promise::spawn_async(async move {
-                        client
+                        println!("Saying hello");
+                        let ret = client
                             .hello(tarpc::context::current(), "Hello from client".to_string())
                             .await
-                            .unwrap()
+                            .unwrap();
+                        println!("Done saying hello");
+                            ret
                     }));
                 }
             }
