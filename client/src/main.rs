@@ -42,7 +42,9 @@ impl App {
         let (client_transport, server_transport) = tarpc::transport::channel::unbounded();
         let client = PackRatClient::new(Default::default(), client_transport);
 
-        let dispatch_promise = Promise::spawn_async(async { let _ = client.dispatch.await; });
+        let dispatch_promise = Promise::spawn_local(async {
+            let _ = client.dispatch.await;
+        });
 
         //tokio::task::spawn();
 
@@ -100,29 +102,29 @@ impl eframe::App for App {
                     let client = self.client.clone();
                     log::info!("Click");
 
-                    self.rx_text = Some(Promise::spawn_async(async move {
+                    self.rx_text = Some(Promise::spawn_local(async move {
                         println!("Saying hello");
-                        let ret = client
+                        match client
                             .hello(tarpc::context::current(), "Hello from client".to_string())
                             .await
-                            .unwrap();
-                        println!("Done saying hello");
-                            ret
+                        {
+                            Ok(text) => text,
+                            Err(e) => format!("{:#}", e),
+                        }
                     }));
                 }
             }
         });
 
-        poll_promise::tick();
-
         if self.can_send {
             // Flush RPC changes to the server
             let waker = noop_waker_ref();
             let mut cx = std::task::Context::from_waker(&waker);
-            while let Poll::Ready(Some(Ok(value))) = self.server_transport.poll_next_unpin(&mut cx) {
+            while let Poll::Ready(Some(Ok(value))) = self.server_transport.poll_next_unpin(&mut cx)
+            {
                 self.ws_tx
                     .send(ewebsock::WsMessage::Binary(common::encode(&value).unwrap()));
-                }
+            }
         }
     }
 }
@@ -158,7 +160,7 @@ fn main() {
 
     let web_options = eframe::WebOptions::default();
 
-    wasm_bindgen_futures::spawn_local(async {
+    let _ = Promise::spawn_local(async {
         let start_result = eframe::WebRunner::new()
             .start(
                 "the_canvas_id",

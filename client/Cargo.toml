@@ -17,18 +17,13 @@ serde = { version = "1", features = ["derive"] }
 getrandom = { version = "0.2", features = ["js"] }
 
 common = { path = "../common" }
-#tarpc = { version = "0.34.0", features = ["serde1"] }
-tarpc = { path = "../../tarpc/tarpc" }
+tarpc = { git = "https://github.com/Masterchef365/tarpc.git", branch = "whiz-port", features = ["serde1"] }
 
 ewebsock = "0.6.0"
 
-#poll-promise = { version = "0.3.0", features = ["tokio"] }
-poll-promise = { git = "https://github.com/Masterchef365/poll-promise.git", branch = "wasm", features = ["smol"] }
+poll-promise = { git = "https://github.com/Masterchef365/poll-promise.git", branch = "wasm", features = ["web"] }
 futures-util = "0.3.30"
 
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 env_logger = "0.10"
-
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-wasm-bindgen-futures = "0.4"

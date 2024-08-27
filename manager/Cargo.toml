@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-tarpc = "0.34.0"
+tarpc = { git = "https://github.com/Masterchef365/tarpc.git", branch = "whiz-port", features = ["serde1"] }
 
 tokio-tungstenite = "*"
 tokio = { version = "1", features = ["full"] }

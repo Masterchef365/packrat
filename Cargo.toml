@@ -7,5 +7,5 @@ members = [
     "common",
 ]
 
-[patch.crates-io]
-tarpc = { path = "../tarpc/tarpc" }
+#[patch.crates-io]
+#tarpc = { path = "../tarpc/tarpc" }
