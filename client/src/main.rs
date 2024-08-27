@@ -17,6 +17,7 @@ use futures_util::{StreamExt, TryStreamExt};
 use poll_promise::Promise;
 use tarpc::Request;
 use tarpc::{client::NewClient, transport::channel::UnboundedChannel, ClientMessage, Response};
+use tokio::runtime::Runtime;
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 pub struct App {
@@ -27,6 +28,7 @@ pub struct App {
     ws_tx: WsSender,
     ws_rx: WsReceiver,
     can_send: bool,
+    rt: Runtime,
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Default)]
@@ -45,7 +47,15 @@ impl App {
         let (client_transport, server_transport) = tarpc::transport::channel::unbounded();
         let client = PackRatClient::new(Default::default(), client_transport);
 
-        tokio::task::spawn(client.dispatch);
+        let mut builder = tokio::runtime::Builder::new_current_thread();
+
+        #[cfg(not(target_arch = "wasm32"))]
+        let builder = builder.enable_time();
+
+        let rt = builder.build().unwrap();
+
+        rt.spawn(client.dispatch);
+        //tokio::task::spawn();
 
         let addr = "ws://127.0.0.1:9090";
 
@@ -55,6 +65,7 @@ impl App {
                 .unwrap();
 
         Self {
+            rt,
             can_send: false,
             ws_tx,
             ws_rx,
@@ -74,6 +85,8 @@ impl eframe::App for App {
 
     /// Called each time the UI needs repainting, which may be many times per second.
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        let _entr = self.rt.enter();
+
         // Fetch frames received from the server, and send use them for RPC
         while let Some(msg) = self.ws_rx.try_recv() {
             match msg {
@@ -83,7 +96,7 @@ impl eframe::App for App {
                 }
                 ewebsock::WsEvent::Opened => dbg!(self.can_send = true),
                 ewebsock::WsEvent::Error(e) => panic!("{:#}", e),
-                _ => todo!(),
+                other => log::warn!("Other WS type: {:?}", other),
             }
         }
 
@@ -98,7 +111,8 @@ impl eframe::App for App {
             } else {
                 if ui.button("Do the thing").clicked() {
                     let client = self.client.clone();
-                    println!("Click");
+                    log::info!("Click");
+
                     self.rx_text = Some(Promise::spawn_async(async move {
                         println!("Saying hello");
                         let ret = client
@@ -122,13 +136,15 @@ impl eframe::App for App {
                     .send(ewebsock::WsMessage::Binary(common::encode(&value).unwrap()));
                 }
         }
+
+        // Step the tokio runtime
+        self.rt.block_on(tokio::task::yield_now());
     }
 }
 
 // When compiling natively:
 #[cfg(not(target_arch = "wasm32"))]
-#[tokio::main]
-async fn main() -> eframe::Result {
+fn main() -> eframe::Result {
     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
 
     let native_options = eframe::NativeOptions {
@@ -151,18 +167,19 @@ async fn main() -> eframe::Result {
 
 // When compiling to web using trunk:
 #[cfg(target_arch = "wasm32")]
-#[tokio::main(flavor = "current_thread")]
-async fn main() {
+fn main() {
     // Redirect `log` message to `console.log` and friends:
     eframe::WebLogger::init(log::LevelFilter::Debug).ok();
 
     let web_options = eframe::WebOptions::default();
 
-    let start_result = eframe::WebRunner::new()
-        .start(
-            "the_canvas_id",
-            web_options,
-            Box::new(|cc| Ok(Box::new(App::new(cc)))),
-        )
-        .await;
+    wasm_bindgen_futures::spawn_local(async {
+        let start_result = eframe::WebRunner::new()
+            .start(
+                "the_canvas_id",
+                web_options,
+                Box::new(|cc| Ok(Box::new(App::new(cc)))),
+            )
+            .await;
+    });
 }
