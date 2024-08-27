@@ -17,21 +17,15 @@ serde = { version = "1", features = ["derive"] }
 getrandom = { version = "0.2", features = ["js"] }
 
 common = { path = "../common" }
-tarpc = { version = "0.34.0", features = ["serde1"] }
+#tarpc = { version = "0.34.0", features = ["serde1"] }
+tarpc = { path = "../../tarpc/tarpc" }
 
-ewebsock-tarpc = { path = "../../ewebsock-tarpc" }
+ewebsock = "0.6.0"
+
 #poll-promise = { version = "0.3.0", features = ["tokio"] }
-poll-promise = { git = "https://github.com/Masterchef365/poll-promise.git", branch = "wasm", features = ["tokio"] }
+poll-promise = { git = "https://github.com/Masterchef365/poll-promise.git", branch = "wasm", features = ["smol"] }
 futures-util = "0.3.30"
 
-
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies.tokio]
-version = "1.32.0"
-features = ["rt", "time", "rt-multi-thread"]
-
-[target.'cfg(target_arch = "wasm32")'.dependencies.tokio]
-version = "1.32.0"
-features = ["rt", "macros"]
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 env_logger = "0.10"

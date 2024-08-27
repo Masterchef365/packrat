@@ -5,11 +5,7 @@ use std::task::Poll;
 
 use common::{PackRatClient, PackRatRequest, PackRatResponse};
 use egui::Ui;
-use ewebsock_tarpc::ewebsock;
-use ewebsock_tarpc::{
-    ewebsock::{WsReceiver, WsSender},
-    WebSocketPoller,
-};
+use ewebsock::{WsReceiver, WsSender};
 use futures_util::sink::SinkExt;
 use futures_util::task::noop_waker_ref;
 use futures_util::{StreamExt, TryStreamExt};
@@ -17,7 +13,6 @@ use futures_util::{StreamExt, TryStreamExt};
 use poll_promise::Promise;
 use tarpc::Request;
 use tarpc::{client::NewClient, transport::channel::UnboundedChannel, ClientMessage, Response};
-use tokio::runtime::Runtime;
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 pub struct App {
@@ -28,7 +23,7 @@ pub struct App {
     ws_tx: WsSender,
     ws_rx: WsReceiver,
     can_send: bool,
-    rt: Runtime,
+    dispatch_promise: Promise<()>,
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Default)]
@@ -47,14 +42,8 @@ impl App {
         let (client_transport, server_transport) = tarpc::transport::channel::unbounded();
         let client = PackRatClient::new(Default::default(), client_transport);
 
-        let mut builder = tokio::runtime::Builder::new_current_thread();
+        let dispatch_promise = Promise::spawn_async(async { let _ = client.dispatch.await; });
 
-        #[cfg(not(target_arch = "wasm32"))]
-        let builder = builder.enable_time();
-
-        let rt = builder.build().unwrap();
-
-        rt.spawn(client.dispatch);
         //tokio::task::spawn();
 
         let addr = "ws://127.0.0.1:9090";
@@ -65,7 +54,7 @@ impl App {
                 .unwrap();
 
         Self {
-            rt,
+            dispatch_promise,
             can_send: false,
             ws_tx,
             ws_rx,
@@ -85,8 +74,6 @@ impl eframe::App for App {
 
     /// Called each time the UI needs repainting, which may be many times per second.
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        let _entr = self.rt.enter();
-
         // Fetch frames received from the server, and send use them for RPC
         while let Some(msg) = self.ws_rx.try_recv() {
             match msg {
@@ -126,6 +113,7 @@ impl eframe::App for App {
             }
         });
 
+        poll_promise::tick();
 
         if self.can_send {
             // Flush RPC changes to the server
@@ -136,9 +124,6 @@ impl eframe::App for App {
                     .send(ewebsock::WsMessage::Binary(common::encode(&value).unwrap()));
                 }
         }
-
-        // Step the tokio runtime
-        self.rt.block_on(tokio::task::yield_now());
     }
 }
 
