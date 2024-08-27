@@ -10,6 +10,7 @@ use futures_util::sink::SinkExt;
 use futures_util::task::noop_waker_ref;
 use futures_util::{StreamExt, TryStreamExt};
 
+use gloo::net::websocket::futures::WebSocket;
 use poll_promise::Promise;
 use tarpc::Request;
 use tarpc::{client::NewClient, transport::channel::UnboundedChannel, ClientMessage, Response};
@@ -29,6 +30,12 @@ pub struct App {
 #[derive(serde::Deserialize, serde::Serialize, Default)]
 pub struct AppData {
     data: u32,
+}
+
+fn frunk() {
+    let ws = WebSocket::open("ws://127.0.0.1:9090").unwrap();
+
+    let client = PackRatClient::new(Default::default(), ws);
 }
 
 impl App {
