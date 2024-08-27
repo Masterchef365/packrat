@@ -1,4 +1,5 @@
 use serde::{de::DeserializeOwned, Serialize};
+pub use bincode::Error as BincodeError;
 
 #[tarpc::service]
 pub trait PackRat {

@@ -1,9 +1,10 @@
 #![warn(clippy::all, rust_2018_idioms)]
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
+use std::convert::Infallible;
 use std::task::Poll;
 
-use common::{decode, encode, PackRatClient, PackRatRequest, PackRatResponse};
+use common::{decode, encode, BincodeError, PackRatClient, PackRatRequest, PackRatResponse};
 use egui::Ui;
 use ewebsock::{WsReceiver, WsSender};
 use futures_util::sink::SinkExt;
@@ -11,7 +12,7 @@ use futures_util::task::noop_waker_ref;
 use futures_util::{StreamExt, TryStreamExt};
 
 use gloo::net::websocket::futures::WebSocket;
-use gloo::net::websocket::Message;
+use gloo::net::websocket::{Message, WebSocketError};
 use poll_promise::Promise;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -35,6 +36,14 @@ pub struct AppData {
     data: u32,
 }
 
+#[derive(thiserror::Error, Debug)]
+pub enum RpcError {
+    #[error("Networking")]
+    WebSocket(#[from] WebSocketError),
+    #[error("Serialization")]
+    Bincode(#[from] BincodeError),
+}
+
 impl App {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         // Load previous app state (if any).
@@ -43,23 +52,23 @@ impl App {
             .and_then(|storage| eframe::get_value(storage, eframe::APP_KEY))
             .unwrap_or_default();
 
-
         let ws = WebSocket::open("ws://127.0.0.1:9090").unwrap();
         let ws = ws
-            .with(|client_msg| async {
+            .map_err(|e| RpcError::from(e))
+            .sink_map_err(|e| RpcError::from(e))
+            .with(|client_msg| async move {
                 encode(&client_msg)
+                    .map_err(|e| RpcError::from(e))
                     .map(Message::Bytes)
-                    .map_err(|e| anyhow::format_err!("{e}"))
             })
             .filter_map(|message| async {
                 match message {
-                    Ok(Message::Bytes(byt)) => decode(&byt).ok(),
+                    Ok(Message::Bytes(byt)) => decode(&byt).ok().map(Ok),
                     _ => None,
                 }
             });
+
         let client = PackRatClient::new(Default::default(), ws);
-
-
 
 
 

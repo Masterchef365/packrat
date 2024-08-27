@@ -678,7 +678,6 @@ dependencies = [
 name = "client"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "common",
  "eframe",
  "egui",
@@ -691,6 +690,7 @@ dependencies = [
  "poll-promise",
  "serde",
  "tarpc",
+ "thiserror",
 ]
 
 [[package]]
