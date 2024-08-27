@@ -3,7 +3,7 @@
 
 use std::task::Poll;
 
-use common::{PackRatClient, PackRatRequest, PackRatResponse};
+use common::{decode, encode, PackRatClient, PackRatRequest, PackRatResponse};
 use egui::Ui;
 use ewebsock::{WsReceiver, WsSender};
 use futures_util::sink::SinkExt;
@@ -11,9 +11,12 @@ use futures_util::task::noop_waker_ref;
 use futures_util::{StreamExt, TryStreamExt};
 
 use gloo::net::websocket::futures::WebSocket;
+use gloo::net::websocket::Message;
 use poll_promise::Promise;
-use tarpc::Request;
+use serde::de::DeserializeOwned;
+use serde::Serialize;
 use tarpc::{client::NewClient, transport::channel::UnboundedChannel, ClientMessage, Response};
+use tarpc::{Request, Transport};
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 pub struct App {
@@ -32,12 +35,6 @@ pub struct AppData {
     data: u32,
 }
 
-fn frunk() {
-    let ws = WebSocket::open("ws://127.0.0.1:9090").unwrap();
-
-    let client = PackRatClient::new(Default::default(), ws);
-}
-
 impl App {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         // Load previous app state (if any).
@@ -45,6 +42,27 @@ impl App {
             .storage
             .and_then(|storage| eframe::get_value(storage, eframe::APP_KEY))
             .unwrap_or_default();
+
+
+        let ws = WebSocket::open("ws://127.0.0.1:9090").unwrap();
+        let ws = ws
+            .with(|client_msg| async {
+                encode(&client_msg)
+                    .map(Message::Bytes)
+                    .map_err(|e| anyhow::format_err!("{e}"))
+            })
+            .filter_map(|message| async {
+                match message {
+                    Ok(Message::Bytes(byt)) => decode(&byt).ok(),
+                    _ => None,
+                }
+            });
+        let client = PackRatClient::new(Default::default(), ws);
+
+
+
+
+
 
         let (client_transport, server_transport) = tarpc::transport::channel::unbounded();
         let client = PackRatClient::new(Default::default(), client_transport);
@@ -104,7 +122,7 @@ impl eframe::App for App {
                 } else {
                     ui.label("Waiting for a response ...");
                 }
-            } 
+            }
 
             if ui.button("Do the thing").clicked() {
                 let client = self.client.clone();
