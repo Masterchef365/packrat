@@ -150,19 +150,18 @@ async fn main() -> eframe::Result {
 
 // When compiling to web using trunk:
 #[cfg(target_arch = "wasm32")]
-fn main() {
+#[tokio::main(flavor = "current_thread")]
+async fn main() {
     // Redirect `log` message to `console.log` and friends:
     eframe::WebLogger::init(log::LevelFilter::Debug).ok();
 
     let web_options = eframe::WebOptions::default();
 
-    wasm_bindgen_futures::spawn_local(async {
-        let start_result = eframe::WebRunner::new()
-            .start(
-                "the_canvas_id",
-                web_options,
-                Box::new(|cc| Ok(Box::new(App::new(cc)))),
-            )
-            .await;
-    });
+    let start_result = eframe::WebRunner::new()
+        .start(
+            "the_canvas_id",
+            web_options,
+            Box::new(|cc| Ok(Box::new(App::new(cc)))),
+        )
+        .await;
 }

@@ -6,3 +6,6 @@ members = [
     "client", 
     "common",
 ]
+
+[patch.crates-io]
+tarpc = { path = "../tarpc/tarpc" }
