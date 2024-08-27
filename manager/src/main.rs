@@ -19,15 +19,17 @@ async fn main() {
 async fn server_loop(addr: String) {
     let try_socket = TcpListener::bind(&addr).await;
 
+    let pr = PackRatServer::default();
+
     let listener = try_socket.expect("Failed to bind");
 
     while let Ok((stream, addr)) = listener.accept().await {
         dbg!(addr);
-        tokio::spawn(accept_connection(stream));
+        tokio::spawn(accept_connection(stream, pr.clone()));
     }
 }
 
-async fn accept_connection(stream: TcpStream) {
+async fn accept_connection(stream: TcpStream, pr: PackRatServer) {
     let ws_stream = match tokio_tungstenite::accept_async(stream).await {
         Ok(stream) => stream,
         Err(e) => {
@@ -59,7 +61,7 @@ async fn accept_connection(stream: TcpStream) {
 
     tokio::spawn(
         server
-            .execute(PackRatServer::default().serve())
+            .execute(pr.serve())
             .for_each(|response| async move {
                 tokio::spawn(response);
             }),
