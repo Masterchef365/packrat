@@ -683,7 +683,7 @@ dependencies = [
  "eframe",
  "egui",
  "env_logger",
- "ewebsock",
+ "ewebsock-async-simple",
  "futures-util",
  "getrandom",
  "log",
@@ -1132,6 +1132,15 @@ dependencies = [
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
+]
+
+[[package]]
+name = "ewebsock-async-simple"
+version = "0.1.0"
+source = "git+https://github.com/Masterchef365/ewebsock-async-simple.git?branch=main#3e8ce16b0ad1cbe2898d3c5a85a752a8d6599659"
+dependencies = [
+ "ewebsock",
+ "futures-util",
 ]
 
 [[package]]

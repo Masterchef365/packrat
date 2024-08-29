@@ -1,23 +1,12 @@
-#![warn(clippy::all, rust_2018_idioms)]
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
-
 use std::convert::Infallible;
-use std::task::Poll;
+use futures_util::StreamExt;
+use futures_util::sink::SinkExt;
 
 use bincode::Error as BincodeError;
-use common::{decode, encode, PackRatClient, PackRatRequest, PackRatResponse};
-use egui::Ui;
-use ewebsock::{WsMessage, WsReceiver, WsSender};
-use futures_util::sink::SinkExt;
-use futures_util::task::noop_waker_ref;
-use futures_util::{StreamExt, TryStreamExt};
+use common::{decode, encode, PackRatClient};
 
 use poll_promise::Promise;
-use sock::{Remote, Sock};
-use tarpc::Request;
-use tarpc::{client::NewClient, transport::channel::UnboundedChannel, ClientMessage, Response};
-
-mod sock;
+use ewebsock_async_simple::{Remote, ewebsock};
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 pub struct App {
@@ -73,7 +62,7 @@ impl App {
             ewebsock::connect_with_wakeup(addr, Default::default(), move || ctx.request_repaint())
                 .unwrap();
 
-        let (sock, remote) = sock::connect(websock);
+        let (sock, remote) = ewebsock_async_simple::connect(websock);
 
         let sock = sock
             .with(|client_msg| async move { encode(&client_msg).map_err(|e| RpcError::from(e)) })
@@ -104,7 +93,7 @@ impl eframe::App for App {
     /// Called each time the UI needs repainting, which may be many times per second.
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         // Fetch frames received from the server, and send use them for RPC
-        self.remote.receive();
+        self.remote.receive().unwrap();
 
         // Do gui stuff
         egui::CentralPanel::default().show(ctx, |ui| {
