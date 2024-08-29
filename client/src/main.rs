@@ -104,6 +104,7 @@ impl eframe::App for App {
     /// Called each time the UI needs repainting, which may be many times per second.
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         // Fetch frames received from the server, and send use them for RPC
+        self.remote.receive();
 
         // Do gui stuff
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -122,7 +123,7 @@ impl eframe::App for App {
                 self.rx_text = Some(Promise::spawn_local(async move {
                     log::info!("Saying hello");
                     let ret = match client
-                        .hello(tarpc::context::current(), "Hello from client".to_string())
+                        .hello(tarpc::context::current(), "Client eastwood".to_string())
                         .await
                     {
                         Ok(text) => text,
@@ -133,6 +134,8 @@ impl eframe::App for App {
                 }));
             }
         });
+
+        self.remote.send();
     }
 }
 
