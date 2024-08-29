@@ -678,6 +678,7 @@ dependencies = [
 name = "client"
 version = "0.1.0"
 dependencies = [
+ "bincode",
  "common",
  "eframe",
  "egui",
@@ -689,6 +690,7 @@ dependencies = [
  "poll-promise",
  "serde",
  "tarpc",
+ "thiserror",
 ]
 
 [[package]]
@@ -2204,6 +2206,7 @@ source = "git+https://github.com/Masterchef365/poll-promise.git?branch=wasm#a448
 dependencies = [
  "document-features",
  "static_assertions",
+ "tokio",
  "wasm-bindgen",
  "wasm-bindgen-futures",
 ]

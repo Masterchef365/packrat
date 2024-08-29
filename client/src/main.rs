@@ -1,11 +1,13 @@
 #![warn(clippy::all, rust_2018_idioms)]
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
+use std::convert::Infallible;
 use std::task::Poll;
 
-use common::{PackRatClient, PackRatRequest, PackRatResponse};
+use bincode::Error as BincodeError;
+use common::{decode, encode, PackRatClient, PackRatRequest, PackRatResponse};
 use egui::Ui;
-use ewebsock::{WsReceiver, WsSender};
+use ewebsock::{WsMessage, WsReceiver, WsSender};
 use futures_util::sink::SinkExt;
 use futures_util::task::noop_waker_ref;
 use futures_util::{StreamExt, TryStreamExt};
@@ -22,7 +24,6 @@ pub struct App {
     rx_text: Option<Promise<String>>,
     client: PackRatClient,
     data: AppData,
-    server_transport: UnboundedChannel<ClientMessage<PackRatRequest>, Response<PackRatResponse>>,
     dispatch_promise: Promise<()>,
 }
 
@@ -30,6 +31,29 @@ pub struct App {
 pub struct AppData {
     data: u32,
 }
+
+#[derive(thiserror::Error, Debug)]
+pub enum RpcError {
+    //#[error("Networking")]
+    //WebSocket(#[from] WebSocketError),
+    #[error("Serialization")]
+    Bincode(#[from] BincodeError),
+    #[error("no")]
+    WebSocket(#[from] Infallible),
+}
+/*
+
+impl App {
+    pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
+        // Load previous app state (if any).
+        let data: AppData = cc
+            .storage
+            .and_then(|storage| eframe::get_value(storage, eframe::APP_KEY))
+            .unwrap_or_default();
+
+        let ws = WebSocket::open("ws://127.0.0.1:9090").unwrap();
+        *
+ * */
 
 impl App {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
@@ -48,7 +72,11 @@ impl App {
             ewebsock::connect_with_wakeup(addr, Default::default(), move || ctx.request_repaint())
                 .unwrap();
 
-        let sock = Sock::new(sock);
+        let sock = Sock::new(sock)
+            //.map_err(|e| RpcError::from(e))
+            //.sink_map_err(|e| RpcError::from(e))
+            .with(|client_msg| async move { encode(&client_msg).map_err(|e| RpcError::from(e)) })
+            .map(|byt| decode(&byt).map_err(|e| RpcError::from(e)));
 
         let client = PackRatClient::new(Default::default(), sock);
 
@@ -56,10 +84,8 @@ impl App {
             let _ = client.dispatch.await;
         });
 
-
         Self {
             dispatch_promise,
-            server_transport,
             client: client.client,
             rx_text: None,
             data,
@@ -77,7 +103,6 @@ impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         // Fetch frames received from the server, and send use them for RPC
 
-
         // Do gui stuff
         egui::CentralPanel::default().show(ctx, |ui| {
             if let Some(promise) = &mut self.rx_text {
@@ -86,7 +111,7 @@ impl eframe::App for App {
                 } else {
                     ui.label("Waiting for a response ...");
                 }
-            } 
+            }
 
             if ui.button("Do the thing").clicked() {
                 let client = self.client.clone();
