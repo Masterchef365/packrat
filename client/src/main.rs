@@ -11,8 +11,11 @@ use futures_util::task::noop_waker_ref;
 use futures_util::{StreamExt, TryStreamExt};
 
 use poll_promise::Promise;
+use sock::Sock;
 use tarpc::Request;
 use tarpc::{client::NewClient, transport::channel::UnboundedChannel, ClientMessage, Response};
+
+mod sock;
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 pub struct App {
@@ -20,9 +23,6 @@ pub struct App {
     client: PackRatClient,
     data: AppData,
     server_transport: UnboundedChannel<ClientMessage<PackRatRequest>, Response<PackRatResponse>>,
-    ws_tx: WsSender,
-    ws_rx: WsReceiver,
-    can_send: bool,
     dispatch_promise: Promise<()>,
 }
 
@@ -39,27 +39,26 @@ impl App {
             .and_then(|storage| eframe::get_value(storage, eframe::APP_KEY))
             .unwrap_or_default();
 
-        let (client_transport, server_transport) = tarpc::transport::channel::unbounded();
-        let client = PackRatClient::new(Default::default(), client_transport);
-
-        let dispatch_promise = Promise::spawn_local(async {
-            let _ = client.dispatch.await;
-        });
-
         //tokio::task::spawn();
 
         let addr = "ws://127.0.0.1:9090";
 
         let ctx = cc.egui_ctx.clone();
-        let (ws_tx, ws_rx) =
+        let sock =
             ewebsock::connect_with_wakeup(addr, Default::default(), move || ctx.request_repaint())
                 .unwrap();
 
+        let sock = Sock::new(sock);
+
+        let client = PackRatClient::new(Default::default(), sock);
+
+        let dispatch_promise = Promise::spawn_local(async {
+            let _ = client.dispatch.await;
+        });
+
+
         Self {
             dispatch_promise,
-            can_send: false,
-            ws_tx,
-            ws_rx,
             server_transport,
             client: client.client,
             rx_text: None,
@@ -77,17 +76,7 @@ impl eframe::App for App {
     /// Called each time the UI needs repainting, which may be many times per second.
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         // Fetch frames received from the server, and send use them for RPC
-        while let Some(msg) = self.ws_rx.try_recv() {
-            match msg {
-                ewebsock::WsEvent::Message(ewebsock::WsMessage::Binary(binary)) => {
-                    let decoded = common::decode(&binary).unwrap();
-                    self.server_transport.start_send_unpin(decoded).unwrap();
-                }
-                ewebsock::WsEvent::Opened => dbg!(self.can_send = true),
-                ewebsock::WsEvent::Error(e) => panic!("{:#}", e),
-                other => log::warn!("Other WS type: {:?}", other),
-            }
-        }
+
 
         // Do gui stuff
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -115,17 +104,6 @@ impl eframe::App for App {
                 }));
             }
         });
-
-        if self.can_send {
-            // Flush RPC changes to the server
-            let waker = noop_waker_ref();
-            let mut cx = std::task::Context::from_waker(&waker);
-            while let Poll::Ready(Some(Ok(value))) = self.server_transport.poll_next_unpin(&mut cx)
-            {
-                self.ws_tx
-                    .send(ewebsock::WsMessage::Binary(common::encode(&value).unwrap()));
-            }
-        }
     }
 }
 
