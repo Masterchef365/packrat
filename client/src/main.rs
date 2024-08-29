@@ -13,7 +13,7 @@ use futures_util::task::noop_waker_ref;
 use futures_util::{StreamExt, TryStreamExt};
 
 use poll_promise::Promise;
-use sock::Sock;
+use sock::{Remote, Sock};
 use tarpc::Request;
 use tarpc::{client::NewClient, transport::channel::UnboundedChannel, ClientMessage, Response};
 
@@ -24,6 +24,7 @@ pub struct App {
     rx_text: Option<Promise<String>>,
     client: PackRatClient,
     data: AppData,
+    remote: Remote,
     dispatch_promise: Promise<()>,
 }
 
@@ -68,13 +69,13 @@ impl App {
         let addr = "ws://127.0.0.1:9090";
 
         let ctx = cc.egui_ctx.clone();
-        let sock =
+        let websock =
             ewebsock::connect_with_wakeup(addr, Default::default(), move || ctx.request_repaint())
                 .unwrap();
 
-        let sock = Sock::new(sock)
-            //.map_err(|e| RpcError::from(e))
-            //.sink_map_err(|e| RpcError::from(e))
+        let (sock, remote) = sock::connect(websock);
+
+        let sock = sock
             .with(|client_msg| async move { encode(&client_msg).map_err(|e| RpcError::from(e)) })
             .map(|byt| decode(&byt).map_err(|e| RpcError::from(e)));
 
@@ -85,6 +86,7 @@ impl App {
         });
 
         Self {
+            remote,
             dispatch_promise,
             client: client.client,
             rx_text: None,
@@ -118,14 +120,16 @@ impl eframe::App for App {
                 log::info!("Click");
 
                 self.rx_text = Some(Promise::spawn_local(async move {
-                    println!("Saying hello");
-                    match client
+                    log::info!("Saying hello");
+                    let ret = match client
                         .hello(tarpc::context::current(), "Hello from client".to_string())
                         .await
                     {
                         Ok(text) => text,
                         Err(e) => format!("{:#}", e),
-                    }
+                    };
+                    log::info!("Done saying hello");
+                    ret
                 }));
             }
         });
