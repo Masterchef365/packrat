@@ -1,4 +1,4 @@
-use futures_util::sink::SinkExt;
+use futures_util::{sink::SinkExt, TryStreamExt};
 use futures_util::StreamExt;
 use serde::{de::DeserializeOwned, Serialize};
 use std::convert::Infallible;
@@ -52,6 +52,7 @@ where
     SinkItem: DeserializeOwned,
     Item: Serialize,
     S: Transport<Vec<u8>, Vec<u8>>,
+    S::Error: From<BincodeError>,
 {
     sock.with(|client_msg| async move { Ok(encode(&client_msg).unwrap()) })
         .map(|byt| Ok::<_, S::Error>(decode(&byt.unwrap()).unwrap()))
@@ -75,6 +76,8 @@ impl App {
                 .unwrap();
 
         let (sock, remote) = ewebsock_async_simple::connect(websock);
+
+        let sock = sock.map_err(RpcError::from).sink_map_err(RpcError::from);
 
         let sock = bincode_stream(sock);
 
