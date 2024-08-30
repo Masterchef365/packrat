@@ -1,5 +1,5 @@
-use futures_util::{sink::SinkExt, TryStreamExt};
 use futures_util::StreamExt;
+use futures_util::{sink::SinkExt, TryStreamExt};
 use serde::{de::DeserializeOwned, Serialize};
 use std::convert::Infallible;
 
@@ -47,15 +47,17 @@ impl App {
         *
  * */
 
-fn bincode_stream<Item, SinkItem, S>(sock: S) -> impl Transport<Item, SinkItem>
+fn bincode_stream<Item, SinkItem, S>(
+    sock: S,
+) -> impl Transport<Item, SinkItem, TransportError = RpcError>
 where
     SinkItem: DeserializeOwned,
     Item: Serialize,
     S: Transport<Vec<u8>, Vec<u8>>,
-    S::Error: From<BincodeError>,
+    RpcError: From<S::Error>,
 {
-    sock.with(|client_msg| async move { Ok(encode(&client_msg).unwrap()) })
-        .map(|byt| Ok::<_, S::Error>(decode(&byt.unwrap()).unwrap()))
+    sock.with(|client_msg| async move { Ok(encode(&client_msg)?) })
+        .map(|byt| Ok(decode(&byt?)?))
 }
 
 impl App {
