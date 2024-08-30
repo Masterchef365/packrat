@@ -17,9 +17,10 @@ serde = { version = "1", features = ["derive"] }
 getrandom = { version = "0.2", features = ["js"] }
 
 common = { path = "../common" }
-tarpc = { git = "https://github.com/Masterchef365/tarpc.git", branch = "whiz-port", features = ["serde1"] }
+tarpc = { git = "https://github.com/Masterchef365/tarpc.git", branch = "whiz-port", features = ["serde1", "serde-transport-bincode"] }
 
-ewebsock-async-simple = { git = "https://github.com/Masterchef365/ewebsock-async-simple.git", branch = "main" }
+#ewebsock-async-simple = { git = "https://github.com/Masterchef365/ewebsock-async-simple.git", branch = "main" }
+ewebsock-async-simple = { path = "../../ewebsock-async-simple" }
 
 futures-util = "0.3.30"
 thiserror = "1.0.63"
