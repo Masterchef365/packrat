@@ -684,6 +684,7 @@ dependencies = [
  "egui",
  "env_logger",
  "ewebsock-async-simple",
+ "ewebsock-async-tarpc-utils",
  "futures-util",
  "getrandom",
  "log",
@@ -1172,6 +1173,18 @@ version = "0.1.0"
 dependencies = [
  "ewebsock",
  "futures-util",
+]
+
+[[package]]
+name = "ewebsock-async-tarpc-utils"
+version = "0.1.0"
+source = "git+https://github.com/Masterchef365/ewebsock-async-tarpc-utils?branch=main#ebde2cf8c0e1d6efe6debd1ca8b26ba9f38ffb3b"
+dependencies = [
+ "bincode",
+ "futures-util",
+ "serde",
+ "tarpc",
+ "thiserror",
 ]
 
 [[package]]

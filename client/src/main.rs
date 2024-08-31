@@ -1,14 +1,10 @@
-use futures_util::StreamExt;
-use futures_util::{sink::SinkExt, TryStreamExt};
-use serde::{de::DeserializeOwned, Serialize};
-use std::convert::Infallible;
+use ewebsock_async_tarpc_utils::{bincode_stream, RpcError};
+use futures_util::{SinkExt, TryStreamExt};
 
-use bincode::Error as BincodeError;
-use common::{decode, encode, PackRatClient};
+use common::PackRatClient;
 
 use ewebsock_async_simple::{ewebsock, Remote};
 use poll_promise::Promise;
-use tarpc::Transport;
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 pub struct App {
@@ -24,15 +20,6 @@ pub struct AppData {
     data: u32,
 }
 
-#[derive(thiserror::Error, Debug)]
-pub enum RpcError {
-    //#[error("Networking")]
-    //WebSocket(#[from] WebSocketError),
-    #[error("Serialization")]
-    Bincode(#[from] BincodeError),
-    #[error("no")]
-    WebSocket(#[from] Infallible),
-}
 /*
 
 impl App {
@@ -46,20 +33,6 @@ impl App {
         let ws = WebSocket::open("ws://127.0.0.1:9090").unwrap();
         *
  * */
-
-fn bincode_stream<Item, SinkItem, S>(
-    sock: S,
-) -> impl Transport<Item, SinkItem, TransportError = RpcError>
-where
-    SinkItem: DeserializeOwned,
-    Item: Serialize,
-    S: Transport<Vec<u8>, Vec<u8>>,
-    RpcError: From<S::Error>,
-{
-    sock.with(|client_msg| async move { Ok(encode(&client_msg)?) })
-        .map(|byt| Ok(decode(&byt?)?))
-}
-
 impl App {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         // Load previous app state (if any).
