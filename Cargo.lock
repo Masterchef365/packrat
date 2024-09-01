@@ -684,7 +684,7 @@ dependencies = [
  "egui",
  "env_logger",
  "ewebsock-async-simple",
- "ewebsock-async-tarpc-utils 0.1.0 (git+https://github.com/Masterchef365/ewebsock-async-tarpc-utils?branch=main)",
+ "ewebsock-async-tarpc-utils",
  "futures-util",
  "getrandom",
  "log",
@@ -1178,6 +1178,7 @@ dependencies = [
 [[package]]
 name = "ewebsock-async-tarpc-utils"
 version = "0.1.0"
+source = "git+https://github.com/Masterchef365/ewebsock-async-tarpc-utils?branch=main#d0ded28e24f9e4f41f7d9ac25efc99c0a585ebc0"
 dependencies = [
  "bincode",
  "futures-util",
@@ -1185,18 +1186,6 @@ dependencies = [
  "tarpc",
  "thiserror",
  "tokio-tungstenite",
-]
-
-[[package]]
-name = "ewebsock-async-tarpc-utils"
-version = "0.1.0"
-source = "git+https://github.com/Masterchef365/ewebsock-async-tarpc-utils?branch=main#ebde2cf8c0e1d6efe6debd1ca8b26ba9f38ffb3b"
-dependencies = [
- "bincode",
- "futures-util",
- "serde",
- "tarpc",
- "thiserror",
 ]
 
 [[package]]
@@ -1720,7 +1709,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4979f22fdb869068da03c9f7528f8297c6fd2606bc3a4affe42e6a823fdb8da4"
 dependencies = [
  "cfg-if",
- "windows-targets 0.52.6",
+ "windows-targets 0.48.5",
 ]
 
 [[package]]
@@ -1784,7 +1773,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "common",
- "ewebsock-async-tarpc-utils 0.1.0",
+ "ewebsock-async-tarpc-utils",
  "futures-util",
  "log",
  "tarpc",
