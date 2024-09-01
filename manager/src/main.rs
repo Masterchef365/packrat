@@ -72,7 +72,7 @@ impl PackRat for PackRatServer {
             *number += 1;
         }
 
-        tokio::time::sleep(Duration::from_secs(3)).await;
+        //tokio::time::sleep(Duration::from_secs(3)).await;
 
         let number = self.number.lock().unwrap();
         format!("Name: {name} Number: {number}")
