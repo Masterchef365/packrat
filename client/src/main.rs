@@ -21,7 +21,7 @@ async fn main() -> eframe::Result {
     eframe::run_native(
         "eframe template",
         native_options,
-        Box::new(|cc| Ok(Box::new(client::TemplateApp::new(cc)))),
+        Box::new(|cc| Ok(Box::new(client::PackRatApp::new(cc)))),
     )
 }
 
@@ -46,7 +46,7 @@ fn main() {
                     .dyn_into::<eframe::web_sys::HtmlCanvasElement>()
                     .unwrap(),
                 web_options,
-                Box::new(|cc| Ok(Box::new(client::TemplateApp::new(cc)))),
+                Box::new(|cc| Ok(Box::new(client::PackRatApp::new(cc)))),
             )
             .await;
 

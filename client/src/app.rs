@@ -15,7 +15,7 @@ struct Connection {
     client: MyServiceClient,
 }
 
-pub struct TemplateApp {
+pub struct PackRatApp {
     sess: Promise<Result<Connection>>,
     other_client: Option<Promise<Result<MyOtherServiceClient>>>,
     a: u32,
@@ -24,7 +24,7 @@ pub struct TemplateApp {
     subtract_result: Option<Promise<Result<u32, RpcError>>>,
 }
 
-impl TemplateApp {
+impl PackRatApp {
     /// Called once before the first frame.
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         let egui_ctx = cc.egui_ctx.clone();
@@ -64,7 +64,7 @@ fn connection_status<T: Send, E: Debug + Send>(ui: &mut Ui, prom: &Promise<Resul
     };
 }
 
-impl eframe::App for TemplateApp {
+impl eframe::App for PackRatApp {
     /// Called each time the UI needs repainting, which may be many times per second.
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
