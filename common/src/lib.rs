@@ -1,15 +1,19 @@
-use serde::{de::DeserializeOwned, Serialize};
+use framework::Subservice;
+
+/// TLS certificate (self-signed for debug purposes)
+pub const CERTIFICATE: &[u8] = include_bytes!("localhost.crt");
 
 #[tarpc::service]
-pub trait PackRat {
+pub trait MyService {
     /// Returns a greeting for name.
-    async fn hello(name: String) -> String;
+    async fn add(a: u32, b: u32) -> u32;
+
+    /// Returns a sub-service
+    async fn get_sub() -> Subservice<MyOtherServiceClient>;
 }
 
-pub fn encode<T: Serialize>(value: &T) -> bincode::Result<Vec<u8>> {
-    bincode::serialize(value)
-}
-
-pub fn decode<T: DeserializeOwned>(bytes: &[u8]) -> bincode::Result<T> {
-    bincode::deserialize(bytes)
+#[tarpc::service]
+pub trait MyOtherService {
+    /// Returns a greeting for name.
+    async fn subtract(a: u32, b: u32) -> u32;
 }
