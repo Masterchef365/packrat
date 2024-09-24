@@ -21,7 +21,6 @@ struct Connection {
 
 pub struct PackRatApp {
     sess: Promise<Result<Connection>>,
-    other_client: Option<Promise<Result<MyOtherServiceClient>>>,
     a: u32,
     b: u32,
 }
@@ -51,17 +50,8 @@ impl PackRatApp {
             sess,
             a: 420,
             b: 69,
-            other_client: None,
         }
     }
-}
-
-fn connection_status<T: Send, E: Debug + Send>(ui: &mut Ui, prom: &Promise<Result<T, E>>) {
-    match prom.ready() {
-        None => ui.label("Connecting"),
-        Some(Ok(_)) => ui.label("Connection open"),
-        Some(Err(e)) => ui.label(format!("Error: {e:?}")),
-    };
 }
 
 impl eframe::App for PackRatApp {
@@ -75,7 +65,7 @@ impl eframe::App for PackRatApp {
                 ui.add(DragValue::new(&mut self.a).prefix("a: "));
                 ui.add(DragValue::new(&mut self.b).prefix("b: "));
 
-                let spawner = SimpleSpawner::new("adder_id");
+                let spawner = SimpleSpawner::new(ui.next_auto_id());
 
                 if ui.button("Add").clicked() {
                     let ctx = framework::tarpc::context::current();
@@ -88,52 +78,19 @@ impl eframe::App for PackRatApp {
 
                 spawner.show(ui, |ui, result| {
                     match result {
-                        Ok(val) => ui.label(format!("Subtract result: {val}")),
+                        Ok(val) => ui.label(format!("Add result: {val}")),
                         Err(e) => ui.label(format!("Error: {e:?}")),
                     };
                 });
-
-                ui.strong("Subtraction");
-
-                if let Some(prom) = self.other_client.as_mut() {
-                    connection_status(ui, prom);
-
-                    let spawner = SimpleSpawner::new("subtractor_id");
-
-                    if let Some(Ok(other_client)) = prom.ready_mut() {
-                        // Subtracting
-                        if ui.button("Subtract").clicked() {
-                            let ctx = framework::tarpc::context::current();
-                            let client_clone = other_client.clone();
-                            let a = self.a;
-                            let b = self.b;
-
-                            spawner.spawn(ui, async move { client_clone.subtract(ctx, a, b).await });
-                        }
-
-                        spawner.show(ui, |ui, result| {
-                            match result {
-                                Ok(val) => ui.label(format!("Subtract result: {val}")),
-                                Err(e) => ui.label(format!("Error: {e:?}")),
-                            };
-                        });
-                    }
-                } else {
-                    if ui.button("Connect to subtractor").clicked() {
-                        let sess = sess.clone();
-                        self.other_client = Some(Promise::spawn_async(async move {
-                            // Call a method on that client, yielding another service!
-                            let ctx = framework::tarpc::context::current();
-                            let subservice = sess.client.get_sub(ctx).await?;
-                            let other_channel = sess.frame.connect_subservice(subservice).await?;
-                            let newclient =
-                                MyOtherServiceClient::new(Default::default(), other_channel);
-                            tokio::task::spawn(newclient.dispatch);
-                            Ok(newclient.client)
-                        }));
-                    }
-                }
             }
         });
     }
+}
+
+fn connection_status<T: Send, E: Debug + Send>(ui: &mut Ui, prom: &Promise<Result<T, E>>) {
+    match prom.ready() {
+        None => ui.label("Connecting"),
+        Some(Ok(_)) => ui.label("Connection open"),
+        Some(Err(e)) => ui.label(format!("Error: {e:?}")),
+    };
 }
