@@ -19,17 +19,21 @@ pub struct ReplayPack {
     pub custom_keys: String,
 }
 
-#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
-pub enum ReplayState {
+#[derive(Clone, Copy, Debug, Default, serde::Serialize, serde::Deserialize, PartialEq)]
+pub enum ReplayStateData {
+    #[default]
     Ready,
-    Running,
+    Running {
+        board_count: usize,
+        current_board_index: usize,
+    },
     Finished,
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Replay {
     pub xml: ReplayPack,
-    pub state: ReplayState,
+    pub state: ReplayStateData,
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
@@ -39,10 +43,42 @@ pub struct Job {
     pub replays: Vec<ReplayPack>,
 }
 
+#[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
+pub enum IpStatusState {
+    #[default]
+    Ready,
+    Running {
+        job: Job,
+        replay: Replay,
+    },
+    Error {
+        timeout_in: usize,
+    }
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct IpStatus {
+    pub name: String,
+    pub address: String,
+    pub state: IpStatusState,
+    pub lockout_username: Option<String>,
+    pub last_replay_parameters: Replay,
+}
+
 #[tarpc::service]
 pub trait PackRat {
+    // Home page
+
     /// Returns jobs which should appear on the homepage
     async fn get_running_and_queued_jobs() -> Vec<Job>;
+    async fn get_ip_farm_status() -> Vec<IpStatus>;
 
-    async fn login(email: String) -> Option<usize>;
+    // Login
+
+    /// Returns the name of the user given their email
+    async fn login(email: String) -> Option<String>;
+    /// Creates a new account with the given email and name
+    async fn create_account(email: String, name: String);
+    /// Changes the name of an existing account
+    async fn change_name(email: String, name: String);
 }
