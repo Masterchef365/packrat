@@ -1,6 +1,9 @@
 use std::{
     fmt::{Debug, Display},
     future::Future,
+    hash::Hash,
+    marker::PhantomData,
+    sync::{Arc, Mutex},
 };
 
 use anyhow::Result;
@@ -8,6 +11,7 @@ use common::{MyOtherServiceClient, MyServiceClient};
 use egui::{DragValue, Ui};
 use framework::{tarpc::client::RpcError, ClientFramework};
 use poll_promise::Promise;
+use egui_shortcuts::SimpleSpawner;
 
 #[derive(Clone)]
 struct Connection {
@@ -20,8 +24,6 @@ pub struct PackRatApp {
     other_client: Option<Promise<Result<MyOtherServiceClient>>>,
     a: u32,
     b: u32,
-    add_result: Option<Promise<Result<u32, RpcError>>>,
-    subtract_result: Option<Promise<Result<u32, RpcError>>>,
 }
 
 impl PackRatApp {
@@ -49,8 +51,6 @@ impl PackRatApp {
             sess,
             a: 420,
             b: 69,
-            add_result: None,
-            subtract_result: None,
             other_client: None,
         }
     }
@@ -75,28 +75,30 @@ impl eframe::App for PackRatApp {
                 ui.add(DragValue::new(&mut self.a).prefix("a: "));
                 ui.add(DragValue::new(&mut self.b).prefix("b: "));
 
+                let spawner = SimpleSpawner::new("adder_id");
+
                 if ui.button("Add").clicked() {
                     let ctx = framework::tarpc::context::current();
                     let client_clone = sess.client.clone();
                     let a = self.a;
                     let b = self.b;
 
-                    self.add_result = Some(Promise::spawn_async(async move {
-                        client_clone.add(ctx, a, b).await
-                    }));
+                    spawner.spawn(ui, async move { client_clone.add(ctx, a, b).await });
                 }
 
-                if let Some(result) = self.add_result.as_ref().and_then(|res| res.ready()) {
+                spawner.show(ui, |ui, result| {
                     match result {
-                        Ok(val) => ui.label(format!("Add Result: {val}")),
+                        Ok(val) => ui.label(format!("Subtract result: {val}")),
                         Err(e) => ui.label(format!("Error: {e:?}")),
                     };
-                }
+                });
 
                 ui.strong("Subtraction");
 
                 if let Some(prom) = self.other_client.as_mut() {
                     connection_status(ui, prom);
+
+                    let spawner = SimpleSpawner::new("subtractor_id");
 
                     if let Some(Ok(other_client)) = prom.ready_mut() {
                         // Subtracting
@@ -106,19 +108,15 @@ impl eframe::App for PackRatApp {
                             let a = self.a;
                             let b = self.b;
 
-                            self.subtract_result = Some(Promise::spawn_async(async move {
-                                client_clone.subtract(ctx, a, b).await
-                            }));
+                            spawner.spawn(ui, async move { client_clone.subtract(ctx, a, b).await });
                         }
 
-                        if let Some(result) =
-                            self.subtract_result.as_ref().and_then(|res| res.ready())
-                        {
+                        spawner.show(ui, |ui, result| {
                             match result {
                                 Ok(val) => ui.label(format!("Subtract result: {val}")),
                                 Err(e) => ui.label(format!("Error: {e:?}")),
                             };
-                        }
+                        });
                     }
                 } else {
                     if ui.button("Connect to subtractor").clicked() {
