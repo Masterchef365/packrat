@@ -1,4 +1,6 @@
-use framework::Subservice;
+use std::collections::HashMap;
+
+use framework::{Subservice, BiStream};
 
 /// TLS certificate (self-signed for debug purposes)
 pub const CERTIFICATE: &[u8] = include_bytes!("localhost.crt");
@@ -40,38 +42,41 @@ pub struct Replay {
 pub struct Job {
     pub name: String,
     pub description: String,
+    pub is_archived: bool,
     pub replays: Vec<ReplayPack>,
 }
 
-#[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
-pub enum IpStatusState {
-    #[default]
-    Ready,
-    Running {
-        job: Job,
-        replay: Replay,
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub enum WorkerSummaryEnum {
+    Disconnected {
+        /// When this worker was last online
+        last_seen: String,
     },
-    Error {
-        timeout_in: usize,
-    }
+    Online(WorkerStatusState),
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
-pub struct IpStatus {
-    pub name: String,
+pub struct WorkerSummary {
     pub address: String,
-    pub state: IpStatusState,
-    pub lockout_username: Option<String>,
-    pub last_replay_parameters: Replay,
+    pub data: WorkerSummaryEnum,
 }
 
 #[tarpc::service]
-pub trait PackRat {
-    /// API interface for workers
-    async fn worker_login(designation: String) -> Option<Subservice<PackRatWorkerClient>>;
+pub trait PackRatFronend {
+    // ---- Home page ----
+    /// Returns jobs which should appear on the homepage
+    async fn get_running_and_queued_jobs() -> Vec<Job>;
+    async fn get_archive(page: usize, num_per_page: usize) -> Vec<Job>;
 
-    /// Returns the user's name, and 
-    async fn frontend_login(email: String) -> Option<(String, Subservice<PackRatFrontendClient>)>;
+    // ---- Worker control ----
+    /// Returns the list of worker names
+    async fn get_workers() -> HashMap<String, WorkerSummary>;
+    async fn get_worker_events() -> BiStream<(String, WorkerSummaryEnum), ()>;
+    async fn control_worker(name: String) -> Option<Subservice<PackRatWorkerClient>>;
+
+    // ---- Login ----
+    /// Returns the user's name
+    async fn login(email: String) -> Option<Subservice<PackRatFrontendLoggedInClient>>;
 
     /// Creates a new user account with the given email and name
     async fn create_account(email: String, name: String);
@@ -79,23 +84,43 @@ pub trait PackRat {
 }
 
 #[tarpc::service]
-pub trait PackRatWorker {
-    async fn get_replay() -> Replay;
-
-    async fn get_abort() -> bool;
-}
-
-
-#[tarpc::service]
-pub trait PackRatFrontend {
-    // Home page
-
-    /// Returns jobs which should appear on the homepage
-    async fn get_running_and_queued_jobs() -> Vec<Job>;
-    async fn get_ip_farm_status() -> Vec<IpStatus>;
-
-    // Login
-
+pub trait PackRatFrontendLoggedIn {
     /// Changes the username of this account
     async fn change_name(new_name: String);
+
+    /// Returns un-archived jobs which are betrothed to this account
+    async fn my_jobs() -> Vec<Job>;
+}
+
+#[tarpc::service]
+pub trait PackRatWorker {
+    async fn take_offline();
+
+    /// If this worker is Ready, then the new replay is started
+    async fn start_replay(replay: ReplayPack);
+    async fn current_replay() -> Option<Subservice<PackRatWorkerProcessClient>>;
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
+pub enum WorkerStatusState {
+    Setup {
+        message: String,
+    },
+    Replaying {
+        current_board_index: usize,
+        total_boards: usize,
+    },
+    Error {
+        mins_to_timeout: u32,
+        summary: String,
+    },
+}
+
+#[tarpc::service]
+pub trait PackRatWorkerProcess {
+    async fn abort();
+    async fn parameters() -> ReplayPack;
+
+    /// This method will immediately send the current state, followed by events.
+    async fn follow() -> BiStream<WorkerStatusState, ()>;
 }

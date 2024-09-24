@@ -4,3 +4,6 @@ members = [
     "common",
     "server",
 ]
+
+[patch.'https://github.com/Masterchef365/fckweb.git']
+framework = { path = "../fckweb/framework" }

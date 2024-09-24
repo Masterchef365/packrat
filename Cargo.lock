@@ -1339,7 +1339,6 @@ dependencies = [
 [[package]]
 name = "framework"
 version = "0.1.0"
-source = "git+https://github.com/Masterchef365/fckweb.git?branch=main#a78f37ee3c886a072c871eaa87a8fd20b81ca367"
 dependencies = [
  "async-stream",
  "bincode",
