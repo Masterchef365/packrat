@@ -1,4 +1,4 @@
-//use framework::Subservice;
+use framework::Subservice;
 
 /// TLS certificate (self-signed for debug purposes)
 pub const CERTIFICATE: &[u8] = include_bytes!("localhost.crt");
@@ -67,6 +67,27 @@ pub struct IpStatus {
 
 #[tarpc::service]
 pub trait PackRat {
+    /// API interface for workers
+    async fn worker_login(designation: String) -> Option<Subservice<PackRatWorkerClient>>;
+
+    /// Returns the user's name, and 
+    async fn frontend_login(email: String) -> Option<(String, Subservice<PackRatFrontendClient>)>;
+
+    /// Creates a new user account with the given email and name
+    async fn create_account(email: String, name: String);
+
+}
+
+#[tarpc::service]
+pub trait PackRatWorker {
+    async fn get_replay() -> Replay;
+
+    async fn get_abort() -> bool;
+}
+
+
+#[tarpc::service]
+pub trait PackRatFrontend {
     // Home page
 
     /// Returns jobs which should appear on the homepage
@@ -75,10 +96,6 @@ pub trait PackRat {
 
     // Login
 
-    /// Returns the name of the user given their email
-    async fn login(email: String) -> Option<String>;
-    /// Creates a new account with the given email and name
-    async fn create_account(email: String, name: String);
-    /// Changes the name of an existing account
-    async fn change_name(email: String, name: String);
+    /// Changes the username of this account
+    async fn change_name(new_name: String);
 }
