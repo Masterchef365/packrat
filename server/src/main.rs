@@ -1,5 +1,5 @@
 use anyhow::Result;
-use common::PackRatFrontend;
+use common::{BackendWorkerStatus, PackRatFrontend, WorkerSummary};
 use framework::{
     futures::StreamExt,
     tarpc::server::{BaseChannel, Channel},
@@ -45,27 +45,71 @@ struct PackRatFrontendServer {
 }
 
 impl PackRatFrontend for PackRatFrontendServer {
-    async fn get_archive(self,context: framework::tarpc::context::Context,page:usize,num_per_page:usize) -> Vec<common::Job> {
+    async fn get_archive(
+        self,
+        context: framework::tarpc::context::Context,
+        page: usize,
+        num_per_page: usize,
+    ) -> Vec<common::Job> {
         todo!()
     }
 
-    async fn get_running_and_queued_jobs(self,context: framework::tarpc::context::Context,) -> Vec<common::Job> {
+    async fn get_running_and_queued_jobs(
+        self,
+        context: framework::tarpc::context::Context,
+    ) -> Vec<common::Job> {
         todo!()
     }
 
-    async fn get_worker_events(self,context: framework::tarpc::context::Context,) -> framework::BiStream<(String,common::FrontendWorkerStatusUpdate),()> {
+    async fn get_worker_events(
+        self,
+        context: framework::tarpc::context::Context,
+    ) -> framework::BiStream<(String, common::FrontendWorkerStatusUpdate), ()> {
         todo!()
     }
 
-    async fn create_account(self,context: framework::tarpc::context::Context,email:String,name:String) -> () {
+    async fn create_account(
+        self,
+        context: framework::tarpc::context::Context,
+        email: String,
+        name: String,
+    ) -> () {
         todo!()
     }
 
-    async fn get_workers(self,context: framework::tarpc::context::Context,) -> std::collections::HashMap<String,common::WorkerSummary> {
-        todo!()
+    async fn get_workers(
+        self,
+        context: framework::tarpc::context::Context,
+    ) -> std::collections::HashMap<String, common::WorkerSummary> {
+        [
+            (
+                "101SIP02".to_string(),
+                WorkerSummary {
+                    address: "127.0.0.1".to_string(),
+                    data: common::FrontendWorkerStatusUpdate::Online(BackendWorkerStatus::Ready),
+                },
+            ),
+            (
+                "101SIP00".to_string(),
+                WorkerSummary {
+                    address: "127.0.0.1".to_string(),
+                    data: common::FrontendWorkerStatusUpdate::Online(
+                        BackendWorkerStatus::Replaying(common::ReplayStatus::Setup {
+                            message: "Downloading GeoContour".to_string(),
+                        }),
+                    ),
+                },
+            ),
+        ]
+        .into_iter()
+        .collect()
     }
 
-    async fn login(self,context: framework::tarpc::context::Context,email:String) -> Option<framework::Subservice<common::PackRatFrontendLoggedInClient> > {
+    async fn login(
+        self,
+        context: framework::tarpc::context::Context,
+        email: String,
+    ) -> Option<framework::Subservice<common::PackRatFrontendLoggedInClient>> {
         todo!()
     }
 

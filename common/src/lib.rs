@@ -92,16 +92,15 @@ pub trait PackRatWorker {
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 pub enum BackendWorkerStatus {
-    Replaying {
-        current_board_index: usize,
-        total_boards: usize,
-    },
+    Ready,
+    Replaying(ReplayStatus),
     Error {
         mins_to_timeout: u32,
         summary: String,
     },
 }
 
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 pub enum ReplayStatus {
     Setup {
         message: String,

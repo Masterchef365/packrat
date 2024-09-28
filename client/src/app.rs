@@ -21,8 +21,6 @@ struct Connection {
 
 pub struct PackRatApp {
     sess: Promise<Result<Connection>>,
-    a: u32,
-    b: u32,
 }
 
 impl PackRatApp {
@@ -48,8 +46,6 @@ impl PackRatApp {
 
         Self {
             sess,
-            a: 420,
-            b: 69,
         }
     }
 }
@@ -61,17 +57,11 @@ impl eframe::App for PackRatApp {
             connection_status(ui, &self.sess);
 
             if let Some(Ok(sess)) = self.sess.ready_mut() {
-                // Adding
-                ui.add(DragValue::new(&mut self.a).prefix("a: "));
-                ui.add(DragValue::new(&mut self.b).prefix("b: "));
-
                 let spawner = SimpleSpawner::new(ui.next_auto_id());
 
-                if ui.button("Add").clicked() {
+                if ui.button("Get workers").clicked() {
                     let ctx = framework::tarpc::context::current();
                     let client_clone = sess.client.clone();
-                    let a = self.a;
-                    let b = self.b;
 
                     spawner.spawn(ui, async move { client_clone.get_workers(ctx).await });
                 }
