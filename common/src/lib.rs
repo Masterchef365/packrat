@@ -21,23 +21,6 @@ pub struct ReplayPack {
     pub custom_keys: String,
 }
 
-#[derive(Clone, Copy, Debug, Default, serde::Serialize, serde::Deserialize, PartialEq)]
-pub enum ReplayStateData {
-    #[default]
-    Ready,
-    Running {
-        board_count: usize,
-        current_board_index: usize,
-    },
-    Finished,
-}
-
-#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
-pub struct Replay {
-    pub xml: ReplayPack,
-    pub state: ReplayStateData,
-}
-
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Job {
     pub name: String,
