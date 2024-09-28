@@ -15,8 +15,11 @@ async fn main() -> Result<()> {
     )
     .await?;
 
+    let sql = setup_db().await?;
+
     while let Some(inc) = endpoint.accept().await {
         println!("new connection");
+        let sql = sql.clone();
         tokio::spawn(async move {
             let sess = quic_session::server_connect(inc).await?;
 
@@ -24,7 +27,8 @@ async fn main() -> Result<()> {
             let (framework, channel) = ServerFramework::new(sess).await?;
             let transport = BaseChannel::with_defaults(channel);
 
-            let server = PackRatFrontendServer { framework };
+            let sql = sql.clone();
+            let server = PackRatFrontendServer { framework, sql };
             let executor = transport.execute(PackRatFrontend::serve(server));
 
             tokio::spawn(executor.for_each(|response| async move {
@@ -42,6 +46,7 @@ async fn main() -> Result<()> {
 #[derive(Clone)]
 struct PackRatFrontendServer {
     framework: ServerFramework,
+    sql: tokio_rusqlite::Connection,
 }
 
 impl PackRatFrontend for PackRatFrontendServer {
@@ -154,3 +159,20 @@ impl MyOtherService for MyOtherServiceServer {
     }
 }
 */
+
+async fn setup_db() -> Result<tokio_rusqlite::Connection> {
+    let sql = tokio_rusqlite::Connection::open_in_memory().await?;
+
+    sql.call(|conn| {
+        let query = "
+        CREATE TABLE users (
+            id INTEGER PRIMARY KEY,
+            name TEXT,
+            email TEXT
+        )";
+        conn.execute(query, ())?;
+        Ok(())
+    }).await?;
+
+    Ok(sql)
+}
