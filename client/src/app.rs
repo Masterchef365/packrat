@@ -7,16 +7,16 @@ use std::{
 };
 
 use anyhow::Result;
-use common::{MyOtherServiceClient, MyServiceClient};
-use egui::{DragValue, Ui};
+use common::PackRatFrontendClient;
+use egui::{DragValue, Grid, Ui};
+use egui_shortcuts::SimpleSpawner;
 use framework::{tarpc::client::RpcError, ClientFramework};
 use poll_promise::Promise;
-use egui_shortcuts::SimpleSpawner;
 
 #[derive(Clone)]
 struct Connection {
     frame: ClientFramework,
-    client: MyServiceClient,
+    client: PackRatFrontendClient,
 }
 
 pub struct PackRatApp {
@@ -37,7 +37,7 @@ impl PackRatApp {
             let (frame, channel) = ClientFramework::new(sess).await?;
 
             // Get root client
-            let newclient = MyServiceClient::new(Default::default(), channel);
+            let newclient = PackRatFrontendClient::new(Default::default(), channel);
             tokio::spawn(newclient.dispatch);
             let client = newclient.client;
 
@@ -73,14 +73,23 @@ impl eframe::App for PackRatApp {
                     let a = self.a;
                     let b = self.b;
 
-                    spawner.spawn(ui, async move { client_clone.add(ctx, a, b).await });
+                    spawner.spawn(ui, async move { client_clone.get_workers(ctx).await });
                 }
 
                 spawner.show(ui, |ui, result| {
-                    match result {
-                        Ok(val) => ui.label(format!("Add result: {val}")),
-                        Err(e) => ui.label(format!("Error: {e:?}")),
-                    };
+                    show_result(
+                        ui,
+                        result.as_ref().map_err(|e| format!("{:#?}", e)),
+                        |ui, workers| {
+                            Grid::new(ui.next_auto_id()).show(ui, |ui| {
+                                for (worker_name, summary) in workers {
+                                    ui.label(worker_name);
+                                    ui.label(format!("{:?}", summary));
+                                    ui.end_row();
+                                }
+                            });
+                        },
+                    );
                 });
             }
         });
@@ -93,4 +102,13 @@ fn connection_status<T: Send, E: Debug + Send>(ui: &mut Ui, prom: &Promise<Resul
         Some(Ok(_)) => ui.label("Connection open"),
         Some(Err(e)) => ui.label(format!("Error: {e:?}")),
     };
+}
+
+fn show_result<F: FnOnce(&mut Ui, T), T, E: Display>(ui: &mut Ui, result: Result<T, E>, f: F) {
+    match result {
+        Ok(val) => f(ui, val),
+        Err(e) => {
+            ui.label(format!("Error: {e:}"));
+        }
+    }
 }

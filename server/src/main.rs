@@ -1,5 +1,5 @@
 use anyhow::Result;
-use common::{MyOtherService, MyService};
+use common::PackRatFrontend;
 use framework::{
     futures::StreamExt,
     tarpc::server::{BaseChannel, Channel},
@@ -24,8 +24,8 @@ async fn main() -> Result<()> {
             let (framework, channel) = ServerFramework::new(sess).await?;
             let transport = BaseChannel::with_defaults(channel);
 
-            let server = MyServiceServer { framework };
-            let executor = transport.execute(MyService::serve(server));
+            let server = PackRatFrontendServer { framework };
+            let executor = transport.execute(PackRatFrontend::serve(server));
 
             tokio::spawn(executor.for_each(|response| async move {
                 tokio::spawn(response);
@@ -40,11 +40,36 @@ async fn main() -> Result<()> {
 }
 
 #[derive(Clone)]
-struct MyServiceServer {
+struct PackRatFrontendServer {
     framework: ServerFramework,
 }
 
-impl MyService for MyServiceServer {
+impl PackRatFrontend for PackRatFrontendServer {
+    async fn get_archive(self,context: framework::tarpc::context::Context,page:usize,num_per_page:usize) -> Vec<common::Job> {
+        todo!()
+    }
+
+    async fn get_running_and_queued_jobs(self,context: framework::tarpc::context::Context,) -> Vec<common::Job> {
+        todo!()
+    }
+
+    async fn get_worker_events(self,context: framework::tarpc::context::Context,) -> framework::BiStream<(String,common::FrontendWorkerStatusUpdate),()> {
+        todo!()
+    }
+
+    async fn create_account(self,context: framework::tarpc::context::Context,email:String,name:String) -> () {
+        todo!()
+    }
+
+    async fn get_workers(self,context: framework::tarpc::context::Context,) -> std::collections::HashMap<String,common::WorkerSummary> {
+        todo!()
+    }
+
+    async fn login(self,context: framework::tarpc::context::Context,email:String) -> Option<framework::Subservice<common::PackRatFrontendLoggedInClient> > {
+        todo!()
+    }
+
+    /*
     async fn add(self, _context: framework::tarpc::context::Context, a: u32, b: u32) -> u32 {
         a + b
     }
@@ -72,8 +97,10 @@ impl MyService for MyServiceServer {
 
         token
     }
+    */
 }
 
+/*
 #[derive(Clone)]
 struct MyOtherServiceServer;
 
@@ -82,3 +109,4 @@ impl MyOtherService for MyOtherServiceServer {
         a.saturating_sub(b)
     }
 }
+*/

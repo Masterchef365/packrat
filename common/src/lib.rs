@@ -30,32 +30,33 @@ pub struct Job {
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
-pub enum WorkerSummaryEnum {
+pub enum FrontendWorkerStatusUpdate {
     Disconnected {
         /// When this worker was last online
         last_seen: String,
     },
-    Online(WorkerStatusState),
+    Online(BackendWorkerStatus),
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct WorkerSummary {
     pub address: String,
-    pub data: WorkerSummaryEnum,
+    pub data: FrontendWorkerStatusUpdate,
 }
 
 #[tarpc::service]
-pub trait PackRatFronend {
+pub trait PackRatFrontend {
     // ---- Home page ----
     /// Returns jobs which should appear on the homepage
     async fn get_running_and_queued_jobs() -> Vec<Job>;
+    /// Returns a chunk of archival data
     async fn get_archive(page: usize, num_per_page: usize) -> Vec<Job>;
 
     // ---- Worker control ----
     /// Returns the list of worker names
     async fn get_workers() -> HashMap<String, WorkerSummary>;
-    async fn get_worker_events() -> BiStream<(String, WorkerSummaryEnum), ()>;
-    async fn control_worker(name: String) -> Option<Subservice<PackRatWorkerClient>>;
+    /// Returns a stream of (worker name, status update)
+    async fn get_worker_events() -> BiStream<(String, FrontendWorkerStatusUpdate), ()>;
 
     // ---- Login ----
     /// Returns the user's name
@@ -63,7 +64,6 @@ pub trait PackRatFronend {
 
     /// Creates a new user account with the given email and name
     async fn create_account(email: String, name: String);
-
 }
 
 #[tarpc::service]
@@ -71,24 +71,27 @@ pub trait PackRatFrontendLoggedIn {
     /// Changes the username of this account
     async fn change_name(new_name: String);
 
+    /// Creates a proxy connection to the given worker
+    async fn control_worker(name: String) -> Option<Subservice<PackRatWorkerClient>>;
+
     /// Returns un-archived jobs which are betrothed to this account
     async fn my_jobs() -> Vec<Job>;
 }
 
 #[tarpc::service]
 pub trait PackRatWorker {
+    /// Shut down this process on the machine
     async fn take_offline();
 
     /// If this worker is Ready, then the new replay is started
     async fn start_replay(replay: ReplayPack);
+
+    /// Returns the current replay client
     async fn current_replay() -> Option<Subservice<PackRatWorkerProcessClient>>;
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
-pub enum WorkerStatusState {
-    Setup {
-        message: String,
-    },
+pub enum BackendWorkerStatus {
     Replaying {
         current_board_index: usize,
         total_boards: usize,
@@ -99,11 +102,25 @@ pub enum WorkerStatusState {
     },
 }
 
+pub enum ReplayStatus {
+    Setup {
+        message: String,
+    },
+    Running {
+        current_board_index: usize,
+        total_boards: usize,
+    }
+    //FinishingUp,
+}
+
 #[tarpc::service]
 pub trait PackRatWorkerProcess {
+    /// Cause this process to abort
     async fn abort();
+
+    /// Get the parameters of this pack
     async fn parameters() -> ReplayPack;
 
     /// This method will immediately send the current state, followed by events.
-    async fn follow() -> BiStream<WorkerStatusState, ()>;
+    async fn follow() -> BiStream<BackendWorkerStatus, ()>;
 }
