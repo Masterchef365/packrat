@@ -176,3 +176,16 @@ async fn setup_db() -> Result<tokio_rusqlite::Connection> {
 
     Ok(sql)
 }
+
+struct PackRatDatabase {
+    conn: tokio_rusqlite::Connection
+}
+
+impl PackRatDatabase {
+    pub fn new(conn: tokio_rusqlite::Connection) -> Self {
+        Self { conn }
+    }
+
+    pub async fn create_user(user: User) -> Result<()> {
+    }
+}
