@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 use anyhow::Result;
 use common::{BackendWorkerStatus, PackRatFrontend, WorkerSummary};
@@ -16,6 +16,8 @@ mod database;
 async fn main() -> Result<()> {
     let db = PackRatDatabase::new("data/".into())?;
     let db = Arc::new(TokioMutex::new(db));
+
+    tokio::spawn(database::autosave(db.clone(), Duration::from_secs(60*60)));
 
     let endpoint = quic_session::server_endpoint(
         "0.0.0.0:9090".parse().unwrap(),

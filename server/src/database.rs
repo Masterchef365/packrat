@@ -64,8 +64,8 @@ impl PackRatDatabase {
     }
 
     /// Atomically writes the current database state to disk
-    pub fn save_to_disk(&self) {
-        save_to_file(self.save_data_path.clone(), self.savedata());
+    pub fn save_to_disk(&self) -> Result<()> {
+        save_to_file(self.save_data_path.clone(), self.savedata()).map_err(|e| e.into())
     }
 
     pub fn savedata(&self) -> &PackRatSaveData {
@@ -86,10 +86,16 @@ impl PackRatDatabase {
     */
 }
 
-pub async fn autosave(db: Arc<tokio::sync::Mutex<PackRatDatabase>>, interval: Duration) {
+impl Drop for PackRatDatabase {
+    fn drop(&mut self) {
+        let _ = self.save_to_disk();
+    }
+}
+
+pub async fn autosave(db: Arc<tokio::sync::Mutex<PackRatDatabase>>, interval: Duration) -> Result<()> {
     loop {
-        db.lock().await.save_to_disk();
-        tokio::time::sleep(interval);
+        db.lock().await.save_to_disk()?;
+        tokio::time::sleep(interval).await;
     }
 }
 
