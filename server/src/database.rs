@@ -18,7 +18,7 @@ pub struct PackRatJobState {
 pub struct PackRatDatabase {
     save: PackRatSaveData,
     base_path: PathBuf,
-    archive_path: PathBuf,
+    log_path: PathBuf,
     save_data_path: PathBuf,
 }
 
@@ -32,13 +32,13 @@ impl PackRatDatabase {
             );
         }
 
-        let archive_path = path.join("archive");
+        let log_path = path.join("logs");
         let save_data_path = path.join("save.dat");
         let base_path = path;
 
         if !base_path.is_dir() {
             std::fs::create_dir(&base_path)?;
-            std::fs::create_dir(&archive_path)?;
+            std::fs::create_dir(&log_path)?;
         }
 
         let save = match load_from_file(save_data_path.clone()) {
@@ -57,7 +57,7 @@ impl PackRatDatabase {
 
         Ok(Self {
             base_path,
-            archive_path,
+            log_path,
             save_data_path,
             save,
         })
