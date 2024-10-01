@@ -1,15 +1,22 @@
+use std::sync::Arc;
+
 use anyhow::Result;
 use common::{BackendWorkerStatus, PackRatFrontend, WorkerSummary};
+use database::PackRatDatabase;
 use framework::{
     futures::StreamExt,
     tarpc::server::{BaseChannel, Channel},
     ServerFramework,
 };
+use tokio::sync::Mutex as TokioMutex;
 
 mod database;
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    let db = PackRatDatabase::new("data/".into())?;
+    let db = Arc::new(TokioMutex::new(db));
+
     let endpoint = quic_session::server_endpoint(
         "0.0.0.0:9090".parse().unwrap(),
         include_bytes!("localhost.crt").to_vec(),
@@ -19,6 +26,7 @@ async fn main() -> Result<()> {
 
     while let Some(inc) = endpoint.accept().await {
         println!("new connection");
+        let db = db.clone();
         tokio::spawn(async move {
             let sess = quic_session::server_connect(inc).await?;
 
@@ -26,7 +34,7 @@ async fn main() -> Result<()> {
             let (framework, channel) = ServerFramework::new(sess).await?;
             let transport = BaseChannel::with_defaults(channel);
 
-            let server = PackRatFrontendServer { framework, database };
+            let server = PackRatFrontendServer { framework, db };
             let executor = transport.execute(PackRatFrontend::serve(server));
 
             tokio::spawn(executor.for_each(|response| async move {
@@ -44,7 +52,7 @@ async fn main() -> Result<()> {
 #[derive(Clone)]
 struct PackRatFrontendServer {
     framework: ServerFramework,
-    sql: tokio_rusqlite::Connection,
+    db: Arc<TokioMutex<PackRatDatabase>>,
 }
 
 impl PackRatFrontend for PackRatFrontendServer {
