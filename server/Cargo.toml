@@ -9,7 +9,8 @@ quic-session = { git = "https://github.com/Masterchef365/fckweb.git", branch = "
 framework = { git = "https://github.com/Masterchef365/fckweb.git", branch = "main" }
 common = { path = "../common" }
 tokio = { version = "1.40", features = ["full"] }
+serde = { version = "1", featuers = ["derive"] }
 
-rusqlite = { version = "0.32.0", features = ["bundled"] }
-serde_rusqlite = "0.36.0"
-tokio-rusqlite = "0.6.0"
+#rusqlite = { version = "0.32.0", features = ["bundled"] }
+#serde_rusqlite = "0.36.0"
+#tokio-rusqlite = "0.6.0"

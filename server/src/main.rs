@@ -6,6 +6,8 @@ use framework::{
     ServerFramework,
 };
 
+mod database;
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let endpoint = quic_session::server_endpoint(
@@ -15,11 +17,8 @@ async fn main() -> Result<()> {
     )
     .await?;
 
-    let sql = setup_db().await?;
-
     while let Some(inc) = endpoint.accept().await {
         println!("new connection");
-        let sql = sql.clone();
         tokio::spawn(async move {
             let sess = quic_session::server_connect(inc).await?;
 
@@ -27,8 +26,7 @@ async fn main() -> Result<()> {
             let (framework, channel) = ServerFramework::new(sess).await?;
             let transport = BaseChannel::with_defaults(channel);
 
-            let sql = sql.clone();
-            let server = PackRatFrontendServer { framework, sql };
+            let server = PackRatFrontendServer { framework, database };
             let executor = transport.execute(PackRatFrontend::serve(server));
 
             tokio::spawn(executor.for_each(|response| async move {
@@ -147,45 +145,4 @@ impl PackRatFrontend for PackRatFrontendServer {
         token
     }
     */
-}
-
-/*
-#[derive(Clone)]
-struct MyOtherServiceServer;
-
-impl MyOtherService for MyOtherServiceServer {
-    async fn subtract(self, _context: framework::tarpc::context::Context, a: u32, b: u32) -> u32 {
-        a.saturating_sub(b)
-    }
-}
-*/
-
-async fn setup_db() -> Result<tokio_rusqlite::Connection> {
-    let sql = tokio_rusqlite::Connection::open_in_memory().await?;
-
-    sql.call(|conn| {
-        let query = "
-        CREATE TABLE users (
-            id INTEGER PRIMARY KEY,
-            name TEXT,
-            email TEXT
-        )";
-        conn.execute(query, ())?;
-        Ok(())
-    }).await?;
-
-    Ok(sql)
-}
-
-struct PackRatDatabase {
-    conn: tokio_rusqlite::Connection
-}
-
-impl PackRatDatabase {
-    pub fn new(conn: tokio_rusqlite::Connection) -> Self {
-        Self { conn }
-    }
-
-    pub async fn create_user(user: User) -> Result<()> {
-    }
 }
